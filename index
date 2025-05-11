@@ -1,0 +1,194 @@
+import React, { useState, useEffect } from 'react';
+
+function generatePoules(names, poolSize) {
+  const poules = [];
+  for (let i = 0; i < names.length; i += poolSize) {
+    poules.push(names.slice(i, i + poolSize));
+  }
+  return poules;
+}
+
+function generateMatches(poule) {
+  const matches = [];
+  for (let i = 0; i < poule.length; i++) {
+    for (let j = i + 1; j < poule.length; j++) {
+      matches.push({ red: poule[i], blue: poule[j], redHP: '', blueHP: '' });
+    }
+  }
+  return matches;
+}
+
+export default function TournamentApp() {
+  const [names, setNames] = useState(['']);
+  const [poolSize, setPoolSize] = useState(4);
+  const [poules, setPoules] = useState([]);
+  const [matchesByPoule, setMatchesByPoule] = useState([]);
+  const [showResults, setShowResults] = useState(false);
+
+  useEffect(() => {
+    const fontLink = document.createElement('link');
+    fontLink.href = 'https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap';
+    fontLink.rel = 'stylesheet';
+    document.head.appendChild(fontLink);
+    document.body.style.fontFamily = "'MedievalSharp', cursive";
+    document.body.style.backgroundColor = '#fdf3dc';
+    document.body.style.backgroundImage = "url('https://www.transparenttextures.com/patterns/paper-fibers.png')";
+    document.body.style.color = '#2b1d0e';
+    document.body.style.textAlign = 'center';
+    document.body.style.margin = '20px';
+  }, []);
+
+  const handleNameChange = (index, value) => {
+    const updated = [...names];
+    updated[index] = value;
+    setNames(updated);
+  };
+
+  const handleCSVUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const text = e.target.result;
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+      setNames(lines);
+    };
+    reader.readAsText(file);
+  };
+
+  const addRow = () => {
+    setNames([...names, '']);
+  };
+
+  const createPoules = () => {
+    const filtered = names.filter(n => n.trim() !== '');
+    const newPoules = generatePoules(filtered, poolSize);
+    setPoules(newPoules);
+    setMatchesByPoule(newPoules.map(generateMatches));
+  };
+
+  const handleHPChange = (pouleIndex, matchIndex, field, value) => {
+    const updatedMatches = [...matchesByPoule];
+    updatedMatches[pouleIndex][matchIndex][field] = value;
+    setMatchesByPoule(updatedMatches);
+  };
+
+  const computeResults = () => {
+    setShowResults(true);
+  };
+
+  const getRankings = () => {
+    const scores = {};
+    matchesByPoule.flat().forEach(match => {
+      const redHP = parseInt(match.redHP) || 0;
+      const blueHP = parseInt(match.blueHP) || 0;
+      scores[match.red] = (scores[match.red] || 0) + redHP;
+      scores[match.blue] = (scores[match.blue] || 0) + blueHP;
+    });
+    return Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  };
+
+  const inputStyle = {
+    fontFamily: 'MedievalSharp, cursive',
+    padding: '8px',
+    margin: '4px',
+    borderRadius: '6px',
+    border: '2px solid #5c4320',
+    fontSize: '16px'
+  };
+
+  const buttonStyle = base => ({
+    ...inputStyle,
+    cursor: 'pointer',
+    backgroundColor: base === 'blue' ? '#bcd3ff' : base === 'red' ? '#ffb3b3' : '#800000',
+    color: base === 'blue' ? '#002f6c' : base === 'red' ? '#7c0a02' : 'white',
+    fontWeight: base === 'finisher' ? 'bold' : 'normal',
+    borderColor: base === 'finisher' ? '#400000' : '#5c4320'
+  });
+
+  const getRowStyle = (match) => {
+    const redHP = parseInt(match.redHP);
+    const blueHP = parseInt(match.blueHP);
+    if (redHP === 0) {
+      return ['normal', 'normal', 'green', 'green'];
+    } else if (blueHP === 0) {
+      return ['green', 'green', 'normal', 'normal'];
+    }
+    return ['normal', 'normal', 'normal', 'normal'];
+  };
+
+  if (showResults) {
+    const rankings = getRankings();
+    return (
+      <div>
+        <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>Final Rankings</h2>
+        <ul>
+          {rankings.map(([name, score], idx) => (
+            <li key={idx} style={{ fontSize: '18px', marginBottom: '6px' }}>{idx + 1}. {name}: {score} HP</li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h1 style={{ fontSize: '36px', marginBottom: '30px' }}>Fencing Tournament</h1>
+      <label style={{ fontSize: '18px' }}>Set Pool Size:</label><br />
+      <input
+        type="number"
+        min="2"
+        value={poolSize}
+        onChange={e => setPoolSize(Math.max(2, parseInt(e.target.value) || 2))}
+        style={inputStyle}
+      /><br />
+      <label style={{ fontSize: '18px' }}>Import Names (CSV):</label><br />
+      <input type="file" accept=".csv" onChange={handleCSVUpload} style={inputStyle} /><br />
+      {names.map((name, idx) => (
+        <input
+          key={idx}
+          placeholder={`Name ${idx + 1}`}
+          value={name}
+          onChange={e => handleNameChange(idx, e.target.value)}
+          style={inputStyle}
+        />
+      ))}<br />
+      <button onClick={addRow} style={buttonStyle('red')}>Add Name</button>
+      <button onClick={createPoules} style={buttonStyle('blue')}>Match-up</button>
+
+      {poules.map((poule, pIdx) => (
+        <div key={pIdx} style={{ marginTop: '30px' }}>
+          <h2 style={{ fontSize: '24px', marginBottom: '10px' }}>Poule {pIdx + 1}</h2>
+          <table style={{ margin: '0 auto', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                <th style={inputStyle}>Red</th>
+                <th style={inputStyle}>Red HP</th>
+                <th style={inputStyle}>Blue</th>
+                <th style={inputStyle}>Blue HP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matchesByPoule[pIdx].map((match, mIdx) => {
+                const [col1, col2, col3, col4] = getRowStyle(match);
+                const getColor = bg => bg === 'green' ? '#b6fcb6' : 'inherit';
+                return (
+                  <tr key={mIdx}>
+                    <td style={{ ...inputStyle, backgroundColor: getColor(col1) }}>{match.red}</td>
+                    <td><input value={match.redHP} onChange={e => handleHPChange(pIdx, mIdx, 'redHP', e.target.value)} style={{ ...inputStyle, backgroundColor: getColor(col2) }} /></td>
+                    <td style={{ ...inputStyle, backgroundColor: getColor(col3) }}>{match.blue}</td>
+                    <td><input value={match.blueHP} onChange={e => handleHPChange(pIdx, mIdx, 'blueHP', e.target.value)} style={{ ...inputStyle, backgroundColor: getColor(col4) }} /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ))}
+
+      {poules.length > 0 && (
+        <button onClick={computeResults} style={buttonStyle('finisher')}>See Rankings</button>
+      )}
+    </div>
+  );
+}
