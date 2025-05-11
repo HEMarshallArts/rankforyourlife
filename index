@@ -119,6 +119,21 @@ export default function TournamentApp() {
 
   if (showResults) {
     const rankings = getRankings();
+
+    const exportCSV = () => {
+      const headers = 'Rank,Name,HP
+';
+      const rows = rankings.map(([name, score], idx) => `${idx + 1},${name},${score}`).join('
+');
+      const blob = new Blob([headers + rows], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'final_rankings.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
     return (
       <div>
         <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>Final Rankings</h2>
@@ -127,6 +142,8 @@ export default function TournamentApp() {
             <li key={idx} style={{ fontSize: '18px', marginBottom: '6px' }}>{idx + 1}. {name}: {score} HP</li>
           ))}
         </ul>
+        <button onClick={exportCSV} style={{ ...inputStyle, backgroundColor: '#bcd3ff', color: '#002f6c', cursor: 'pointer' }}>Export to CSV</button>
+      </div>
       </div>
     );
   }
@@ -192,3 +209,4 @@ export default function TournamentApp() {
     </div>
   );
 }
+
